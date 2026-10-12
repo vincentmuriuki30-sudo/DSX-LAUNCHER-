@@ -15,25 +15,62 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install Build Tools & Compile APK
+      - name: Prepare Android Project Structure
         run: |
-          sudo apt-get update && sudo apt-get install -y gradle
           mkdir -p app/src/main
           cp -r src app/src/main/
           cp AndroidManifest.xml app/src/main/
           
-          # Create a working gradle build file
-          echo "plugins { id 'com.android.application' }" > app/build.gradle
-          echo "android { namespace 'com.android.launcher' compileSdk 34 defaultConfig { minSdk 21 targetSdk 34 } }" >> app/build.gradle
-          echo "include ':app'" > settings.gradle
-          echo "buildscript { repositories { google(); mavenCentral() } dependencies { classpath 'com.android.tools.build:gradle:8.1.0' } }" > build.gradle
-          echo "dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS) repositories { google(); mavenCentral() } }" >> settings.gradle
+          # Write a standard project build file
+          cat << 'EOF' > build.gradle
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:7.4.2'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          EOF
 
-          gradle assembleDebug --no-daemon
+          cat << 'EOF' > settings.gradle
+          include ':app'
+          EOF
+
+          cat << 'EOF' > app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
+          android {
+              namespace 'com.launcher'
+              compileSdk 33
+              defaultConfig {
+                  applicationId 'com.launcher'
+                  minSdk 21
+                  targetSdk 33
+                  versionCode 1
+                  versionName '1.0'
+              }
+          }
+          EOF
+
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+      - name: Build with Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: assembleDebug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
+          name: launcher-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           
