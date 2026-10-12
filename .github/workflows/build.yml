@@ -15,14 +15,21 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK and Build App
+      - name: Install Build Tools & Compile APK
         run: |
+          sudo apt-get update && sudo apt-get install -y gradle
           mkdir -p app/src/main
           cp -r src app/src/main/
           cp AndroidManifest.xml app/src/main/
-          echo "android { namespace 'com.launcher' compileSdk 34 defaultConfig { minSdk 21 targetSdk 34 } }" > app/build.gradle
+          
+          # Create a working gradle build file
+          echo "plugins { id 'com.android.application' }" > app/build.gradle
+          echo "android { namespace 'com.android.launcher' compileSdk 34 defaultConfig { minSdk 21 targetSdk 34 } }" >> app/build.gradle
           echo "include ':app'" > settings.gradle
-          ./gradlew assembleDebug --no-daemon || true
+          echo "buildscript { repositories { google(); mavenCentral() } dependencies { classpath 'com.android.tools.build:gradle:8.1.0' } }" > build.gradle
+          echo "dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS) repositories { google(); mavenCentral() } }" >> settings.gradle
+
+          gradle assembleDebug --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
